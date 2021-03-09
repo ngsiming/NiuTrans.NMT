@@ -30,6 +30,18 @@
 
 namespace nts { // namespace nts(NiuTrans.Tensor)
 
+void printTensor(XTensor x)
+{
+    printf("\n==============\n");
+    for(int i=0;i<x.dimSize[0];i++)
+    {
+        for(int j=0;j<x.dimSize[1];j++)
+            //if(x.Get2D(i,j)!=0)
+            printf("%.3f,",x.Get2D(i,j));
+        printf("\n**********\n");
+    }
+    printf("\n==============\n");
+}
 /*
 matrix multiplication c = trans(a) * trans(b) * alpha + c * beta
 
@@ -77,13 +89,21 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
             fbgemmPacked8Gemm(
                     *c2,
                     *a2,
-                    b->packedbuf,
+                    *b,
                     a2->dimSize[a2->order-2],
                     c2->dimSize[c2->order-1],
                     a2->dimSize[a2->order-1],
                     transposedA,
                     transposedB
                     );
+            //printf("a2 dim:%d,%d\n",a2->dimSize[0],a2->dimSize[1]);
+            //printf("b dim:%d,%d\n",b->dimSize[0],b->dimSize[1]);
+            //printf("c2 dim:%d,%d\n",c2->dimSize[0],c2->dimSize[1]);
+            //printTensor(*b);
+            //printTensor(b);
+            //printTensor(c2);
+
+            //CheckNTErrors(false,"stop");
         }
         else
         {

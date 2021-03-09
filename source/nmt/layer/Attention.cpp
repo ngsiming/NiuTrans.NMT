@@ -28,6 +28,18 @@
 namespace nmt
 {
 /* constructor */
+void printTensor(XTensor x)
+{
+    printf("\n==============\n");
+    for(int i=0;i<x.dimSize[0];i++)
+    {
+        for(int j=0;j<x.dimSize[1];j++)
+            //if(x.Get2D(i,j)!=0)
+            printf("%.3f,",x.Get2D(i,j));
+        printf("\n**********\n");
+    }
+    printf("\n==============\n");
+}
 Attention::Attention()
 {
     devID = -1;
@@ -128,7 +140,10 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
         //v.Reshape(v.unitNum/v.dimSize[v.order-1], v.dimSize[v.order-1]);
     //}
 
+    //printf("here is the first!");
+    //printTensor(weightQ);
     q2 = usePacking ?fbgemmMulAndShift2D(q, weightQ, biasQ):MulAndShift(q, weightQ, biasQ);
+    //printf("here is the end of the first!");
 
     if (!cache || isTraining || !(cache->enable)) {
         /* self attention for encoder layers */

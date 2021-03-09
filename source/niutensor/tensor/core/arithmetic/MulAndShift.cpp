@@ -26,6 +26,7 @@
 #include "MulAndShift.h"
 #include "MatrixMul.h"
 #include "Sum.h"
+#include <cstdio>
 
 namespace nts { // namespace nts(NiuTrans.Tensor)
 /*
@@ -142,10 +143,53 @@ XTensor fbgemmMulAndShift2D(const XTensor &x, const XTensor &w, const XTensor &b
 
     float dr = (!x.isSparse || !w.isSparse) ? 1.0F : MAX(x.denseRatio, w.denseRatio);
 
+    //XTensor * tmp = NewTensorBufV2(order, dimSize, x.dataType, dr, x.devID, x.mem);
+
+    //printf("********\n");
+    //for(int i=0;i<10;i++)
+    //{
+        //printf("%f,",tmp->Get3D(0,0,i));
+    //}
+    //printf("\n");
+    //[> call _MatrixMul function <]
+    //_MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,[>useFbgemm<]false);
+    //for(int i=0;i<10;i++)
+    //{
+        //printf("%f,",tmp->Get3D(0,0,i));
+    //}
+    //printf("\n");
+    //printf("**********\n");
     XTensor * tmp = NewTensorBufV2(order, dimSize, x.dataType, dr, x.devID, x.mem);
 
+    //printf("=======\n");
+    //for(int i=0;i<10;i++)
+    //{
+        //printf("%f,",tmp->Get3D(0,0,i));
+    //}
+    //printf("\n");
     /* call _MatrixMul function */
+    //printf("\ntmp order:%d\n",tmp->order);
+    //for(int i=0;i<tmp->order;i++)
+        //printf("%d,",tmp->dimSize[i]);
+    //printf("\n");
+    //for(int i=0;i<5;i++)
+        //printf("%f,",tmp->Get3D(0,0,i));
+    //printf("\n");
     _MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,/*useFbgemm*/true);
+    //printf("\ntmp,order:%d\n",tmp->order);
+    //for(int i=0;i<tmp->order;i++)
+        //printf("%d,",tmp->dimSize[i]);
+    //printf("\n");
+    for(int i=0;i<20;i++)
+        printf("%f,",tmp->Get3D(0,0,i));
+    printf("\n");
+    CheckNTErrors(false,"stop");
+    //for(int i=0;i<10;i++)
+    //{
+        //printf("%f,",tmp->Get3D(0,0,i));
+    //}
+    //printf("\n");
+    //printf("=======\n");
     //fbgemmPacked8Gemm(
             //*tmp,
             //x,

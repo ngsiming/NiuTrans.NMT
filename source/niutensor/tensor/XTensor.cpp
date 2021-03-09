@@ -314,24 +314,25 @@ void XTensor::Pack()
     shape.push_back(dimSize[order - 2]);
     shape.push_back(dimSize[order - 1]);
     
-    fbgemmPacked8PackInfo(
-            shape,
-            packed8avx2,
-            false,
-            nrow,
-            ncol,
-            packsize
-            );
+    //not sure how to do prepack.
+    //fbgemmPacked8PackInfo(
+            //shape,
+            //packed8avx2,
+            //false,
+            //nrow,
+            //ncol,
+            //packsize
+            //);
     
-    fbgemmPacked8Pack(
-            packedbuf,
-            (const float*)data,
-            Type::packed8avx2,
-            false,
-            nrow,
-            ncol,
-            packsize
-            );
+    //fbgemmPacked8Pack(
+            //packedbuf,
+            //(const float*)data,
+            //Type::packed8avx2,
+            //false,
+            //nrow,
+            //ncol,
+            //packsize
+            //);
     isPrePacked = true;
 }
 /* 

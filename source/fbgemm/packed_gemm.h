@@ -28,8 +28,7 @@ void fbgemmPacked8Pack(
 
 void fbgemmPacked8Gemm(XTensor& C,
                        const XTensor A,
-                       //const XTensor B,
-                       int8_t* const bPackedBuf,
+                       const XTensor B,
                        const size_t m,
                        const size_t n,
                        const size_t k,

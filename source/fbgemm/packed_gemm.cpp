@@ -8,6 +8,18 @@
 using namespace nts;
 using namespace fbgemm;
 
+void printTensor(XTensor x)
+{
+    printf("\n==============\n");
+    for(int i=0;i<x.dimSize[0];i++)
+    {
+        for(int j=0;j<x.dimSize[1];j++)
+            //if(x.Get2D(i,j)!=0)
+            printf("%.3f,",x.Get2D(i,j));
+        printf("\n**********\n");
+    }
+    printf("\n==============\n");
+}
 // Memory blocking factors (parameters) for packing into AVX2 int8
 static const BlockingFactors Packed8Avx2BlockingFactors = {
     PackingTraits<int8_t, int32_t, inst_set_t::avx2>::MR,
@@ -213,24 +225,106 @@ void fbgemmPacked8Pack(
 // transB: whether B matrix is transposed or not
 void fbgemmPacked8Gemm(XTensor& C,
                        const XTensor A,
-                       int8_t* const bPackedBuf,
+                       const XTensor B,
                        const size_t m,
                        const size_t n,
                        const size_t k,
                        const int transA,
                        const int transB) {
 
+	int len = k * n;
+
+	// 1. collect stats for each column
+	float* bqScale = new float[n];
+	int32_t* bqZeropoint = new int32_t[n];
+
+	const float* data = (float*)B.data;
+	float val = 0;
+	if (transB) {
+		for (int jj = 0; jj < n; jj++) {
+			float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
+			double mean = 0, sqrsum = 0;
+			for (int ii = 0; ii < k; ii++) {
+				val = data[jj * k + ii];
+				mean += val;
+				sqrsum += val * val;
+			}
+			mean /= k;
+			sqrsum /= k;
+			sqrsum -= mean * mean;
+			sqrsum = sqrt(sqrsum);
+
+			min = (float)(mean - 7.0f*sqrsum);
+			max = (float)(mean + 7.0f*sqrsum);
+			bqScale[jj] = (max - min) / 255;
+			bqZeropoint[jj] = (int32_t)(127 - max / bqScale[jj]);
+		}
+	} else {
+		for (int jj = 0; jj < n; jj++) {
+			float min = std::numeric_limits<float>::max(), max = std::numeric_limits<float>::min();
+			double mean = 0, sqrsum = 0;
+			for (int ii = 0; ii < k; ii++) {
+				val = data[jj + ii * n];
+				mean += val;
+				sqrsum += val * val;
+			}
+			mean /= k;
+			sqrsum /= k;
+			sqrsum -= mean * mean;
+			sqrsum = sqrt(sqrsum);
+
+			min = (float)(mean - 7.0f*sqrsum);
+			max = (float)(mean + 7.0f*sqrsum);
+			bqScale[jj] = (max - min) / 255;
+			bqZeropoint[jj] = (int32_t)(127 - max / bqScale[jj]);
+		}
+	}
+	
+  // 2. quantize
+  int8_t* quantized = 0;
+#ifdef _MSC_VER
+  quantized = (int8_t*)_aligned_malloc(len, 256);
+#else
+  int result = posix_memalign((void**)&quantized, 256, len); result;
+  assert(result == 0);
+#endif
+  for (int jj = 0; jj < n; jj++) {
+    TensorQuantizationParams bQuantParam;
+    bQuantParam.scale = bqScale[jj];
+    bQuantParam.zero_point = bqZeropoint[jj];
+    bQuantParam.precision = 8;
+
+    if (transB)
+      fbgemm::Quantize<int8_t>(data + jj * k, quantized + jj * k, k, bQuantParam);
+    else {
+      for (int ii = 0; ii < k; ii++) {
+        quantized[ii*n + jj] = fbgemm::Quantize<int8_t>(data[ii*n + jj], bQuantParam);
+      }
+    }
+  }
+
+  // 3. compute column offsets
+  int32_t* col_offsets = new int32_t[n];
+  col_offsets_with_zero_pt_s8acc32(transB, k, n, quantized, bqZeropoint, col_offsets, 1);
+
+  Type packType = Type::packed8avx2;
+  // 4. packing
+  const fbgemm::BlockingFactors* params = getBlockingFactors(packType);
+  
+  PackBMatrix<int8_t> packedBN(
+      transB? matrix_op_t::Transpose : matrix_op_t::NoTranspose,
+      k, n, quantized, transB? k: n, nullptr, 1, params);
   // pack type
   //marian::Type packType = B->type();
-  Type packType = Type::packed8avx2;
-
-  const fbgemm::BlockingFactors* params = getBlockingFactors(packType);
 
   if((packType == Type::packed8avx2 && fbgemmHasAvx512Support())
+     || (packType == Type::packed8avx2 && !fbgemmHasAvx2Support())
      || (packType == Type::packed8avx512 && !fbgemmHasAvx512Support())) {
     //ABORT("FBGEMM doesn't allow to use {} packing order on {} CPUs",
           //packType == Type::packed8avx2 ? "AVX2" : "AVX512",
           //fbgemmHasAvx512Support() ? "AVX512" : "AVX2");
+    printf("FBGEMM doesn't allow to use %s packing order on %s CPUS\n",packType==packed8avx2?"AVX2":"AVX512",fbgemmHasAvx512Support()?"AVX512":"AVX2");
+    return;
   }
 
 
@@ -239,10 +333,10 @@ void fbgemmPacked8Gemm(XTensor& C,
 
   //int elem = A->shape().elements();
   int elem = A.unitNum;
-  float* data = (float*)A.data;
+  float* adata = (float*)A.data;
 
   // AVX based find min/max
-  FindMinMax(data, &min_est, &max_est, elem);
+  FindMinMax(adata, &min_est, &max_est, elem);
 
   float ascale = (max_est - min_est) / 255;
   int32_t azeropoint = (int32_t)(255 - max_est / ascale);
@@ -261,20 +355,6 @@ void fbgemmPacked8Gemm(XTensor& C,
       row_offset_buf.data(),
       params);
 
-  // packed matrix size of B
-  int bPackSize = PackMatrix<PackBMatrix<int8_t>, int8_t>::packedBufferSize((int32_t)k, (int32_t)n);
-
-  // retrieve B matrix
-  //int8_t* bdata = B->data<int8_t>();
-  const int8_t* bdata = bPackedBuf;
-  float* const bqScale = new float[n];
-  memcpy(bqScale, bdata + bPackSize, n * sizeof(float));
-
-  int32_t* bqZeropoint = new int32_t[n];
-  memcpy(bqZeropoint, bdata + bPackSize + n * sizeof(float), n * sizeof(int32_t));
-
-  int32_t* col_offsets = new int32_t[n];
-  memcpy(col_offsets, bdata + bPackSize + n * (sizeof(float) + sizeof(int32_t)), n * sizeof(int32_t));
 
   DoNothing<float, float> doNothingObj{};
   ReQuantizeForFloat<false, QuantizationGranularity::OUT_CHANNEL> outputProcObj(
@@ -288,11 +368,9 @@ void fbgemmPacked8Gemm(XTensor& C,
       nullptr,
       (std::uint32_t) n);
 
-  PackBMatrix<int8_t> repackedBN(
-    transB ? matrix_op_t::Transpose : matrix_op_t::NoTranspose, (int32_t) k, (int32_t) n, bdata, (int32_t) (transB ? k : n), /*different with marian*/nullptr, 1, params);
 
   // gemm computation
-  fbgemmPacked(packAN, repackedBN, (float*)C.data, (int32_t*)C.data, (int32_t) n, outputProcObj, 0, 1, params);
+  fbgemmPacked(packAN, packedBN, (float*)C.data, (int32_t*)C.data, (int32_t) n, outputProcObj, 0, 1, params);
 
   delete[] col_offsets;
   delete[] bqZeropoint;
