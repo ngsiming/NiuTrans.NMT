@@ -180,10 +180,10 @@ XTensor fbgemmMulAndShift2D(const XTensor &x, const XTensor &w, const XTensor &b
     //for(int i=0;i<tmp->order;i++)
         //printf("%d,",tmp->dimSize[i]);
     //printf("\n");
-    for(int i=0;i<20;i++)
-        printf("%f,",tmp->Get3D(0,0,i));
-    printf("\n");
-    CheckNTErrors(false,"stop");
+    //for(int i=0;i<20;i++)
+        //printf("%f,",tmp->Get3D(0,0,i));
+    //printf("\n");
+    //CheckNTErrors(false,"stop");
     //for(int i=0;i<10;i++)
     //{
         //printf("%f,",tmp->Get3D(0,0,i));
