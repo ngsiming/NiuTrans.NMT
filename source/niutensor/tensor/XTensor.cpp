@@ -245,6 +245,17 @@ XTensor::~XTensor()
 
     if(grad != NULL)
         delete grad;
+    if(isPrePacked)
+    {
+        if(packedBN != nullptr)
+            delete packedBN;
+        if(bqScale != nullptr)
+            delete [] bqScale;
+        if(bqZeropoint != nullptr)
+            delete [] bqZeropoint;
+        if(col_offsets != nullptr)
+            delete [] col_offsets;
+    }
 }
 
 /* set the name of the tensor */
@@ -262,11 +273,11 @@ void XTensor::Init()
     signature = 0;
     data = NULL;
     dataHost = NULL;
-    packedbuf = NULL;
     isPrePacked = false;
-    nrow = 0;
-    ncol = 0;
-    packsize = 0;
+    packedBN = nullptr;
+    bqScale = nullptr;
+    bqZeropoint = nullptr;
+    col_offsets = nullptr;
     devID = -1;
     order = -1;
     memset(dimSize, 0, sizeof(int) * MAX_TENSOR_DIM_NUM);
@@ -313,26 +324,29 @@ void XTensor::Pack()
     std::vector<int> shape;
     shape.push_back(dimSize[order - 2]);
     shape.push_back(dimSize[order - 1]);
-    
-    //not sure how to do prepack.
-    //fbgemmPacked8PackInfo(
-            //shape,
-            //packed8avx2,
-            //false,
-            //nrow,
-            //ncol,
-            //packsize
-            //);
-    
-    //fbgemmPacked8Pack(
-            //packedbuf,
-            //(const float*)data,
-            //Type::packed8avx2,
-            //false,
-            //nrow,
-            //ncol,
-            //packsize
-            //);
+	int nrow,ncol;
+	uint64_t packsize;
+	fbgemmPacked8PackInfo(
+			shape,
+			packed8avx2,
+			false,
+			nrow,
+			ncol,
+			packsize
+			);
+
+    fbgemmPacked8Pack(
+            packedBN,
+            bqScale,
+            bqZeropoint,
+            col_offsets,
+            (float*)this->data,
+            Type::packed8avx2,
+            false,
+            nrow,
+            ncol,
+            packsize
+            );
     isPrePacked = true;
 }
 /* 

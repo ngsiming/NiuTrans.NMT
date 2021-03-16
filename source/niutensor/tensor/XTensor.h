@@ -38,6 +38,7 @@
 #include "XMem.h"
 #include "XLink.h"
 #include "XCall.h"
+#include <fbgemm/Fbgemm.h>
 
 /* the nts (NiuTrans.Tensor) namespace */
 namespace nts{
@@ -82,17 +83,16 @@ public:
        when the tensor is operated on GPUs */
     void * dataHost;
 
-    /* buffer to store packed weight matrix and other information needed in following gemm operation.*/
-    int8_t* packedbuf;
-    
-    /* size of the packedbuf */
-    uint64_t packsize;
-
-    /* shape of the packed weight matrix */
-    int nrow,ncol;
-
     /* indicates whether the weight matrix is pre-packed */
     bool isPrePacked;
+
+    fbgemm::PackBMatrix<int8_t>* packedBN;
+
+    float* bqScale;
+
+    int32_t* bqZeropoint;
+
+    int32_t* col_offsets;
 
     /* 
     device id 
