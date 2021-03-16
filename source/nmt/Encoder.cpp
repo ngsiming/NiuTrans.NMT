@@ -128,7 +128,7 @@ make the encoding network
 >> isTraining - indicates whether the model is used for training
 << return - the output tensor of the encoder
 */
-XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining, bool usePacking)
+XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining, bool useFbgemm)
 {
     /* clear the history */
     if (useHistory)
@@ -166,7 +166,7 @@ double startT = GetClockSec();
     LOG("encoder LN b4 attn, elapsed=%.1fs ", GetClockSec() - startT);
         /* self attention */
         startT = GetClockSec();
-        att = selfAtt[i].Make(attnBefore, attnBefore, attnBefore, mask, isTraining, NULL, SELF_ATT, usePacking);
+        att = selfAtt[i].Make(attnBefore, attnBefore, attnBefore, mask, isTraining, NULL, SELF_ATT, useFbgemm);
 
         LOG("encoder self attn, elapsed=%.1fs ", GetClockSec() - startT);
         /* dropout */
@@ -186,7 +186,7 @@ double startT = GetClockSec();
 
         /* fnn */
 	startT = GetClockSec();
-        fnn = fnns[i].Make(fnnBefore, isTraining, usePacking);
+        fnn = fnns[i].Make(fnnBefore, isTraining, useFbgemm);
         LOG("encoder fnn, elapsed=%.1fs ", GetClockSec() - startT);
         /* dropout */
         if (isTraining && dropoutP > 0)
@@ -221,11 +221,11 @@ make the encoding network (wrapper)
 >> isTraining - indicates whether the model is used for training
 << return - the output tensor of the encoder
 */
-XTensor AttEncoder::Make(XTensor& input, XTensor* mask, bool isTraining, bool usePacking)
+XTensor AttEncoder::Make(XTensor& input, XTensor* mask, bool isTraining, bool useFbgemm)
 {
     XTensor nothing;
 
-    return Make(input, mask, nothing, isTraining, usePacking);
+    return Make(input, mask, nothing, isTraining, useFbgemm);
 }
 
 }

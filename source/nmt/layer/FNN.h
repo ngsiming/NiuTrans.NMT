@@ -78,7 +78,7 @@ public:
 
     /* make the network */
     XTensor Make(XTensor& input, bool isTraining,
-                bool usePacking = false);
+                bool useFbgemm = false);
 };
 
 }

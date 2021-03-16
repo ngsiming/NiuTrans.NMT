@@ -108,7 +108,7 @@ public:
     /* make the decoding network */
     XTensor Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
                  XTensor* maskEncDec, int nstep, bool isTraining,
-                 bool usePacking=false);
+                 bool useFbgemm=false);
 };
 
 }

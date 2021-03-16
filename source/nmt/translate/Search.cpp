@@ -804,7 +804,7 @@ void GreedySearch::Search(Model* model, XTensor& input,
 {
     XTensor maskEnc;
     XTensor encoding;
-    bool usePacking=true;
+    bool useFbgemm=true;
 
     /* dynamic batch size */
     Prepare(input.unitNum / input.dimSize[input.order - 1]);
@@ -814,7 +814,7 @@ void GreedySearch::Search(Model* model, XTensor& input,
 
     /* make the encoding network */
     double startT = GetClockSec(); 
-    encoding = model->encoder->Make(input, &maskEnc, false, /* usePacking */usePacking);
+    encoding = model->encoder->Make(input, &maskEnc, false, useFbgemm);
     LOG("encoder Make, elapsed=%.1fs ", GetClockSec() - startT);
 
     /* max output-length = scalar * source-length */
@@ -852,7 +852,7 @@ void GreedySearch::Search(Model* model, XTensor& input,
 
         /* make the decoding network */
     double decoderStartT = GetClockSec();
-        decoding = model->decoder->Make(inputDec, encoding, NULL, &maskEncDec, l, false, /* usePacking */usePacking);
+        decoding = model->decoder->Make(inputDec, encoding, NULL, &maskEncDec, l, false, useFbgemm);
 	decoderTotalT += (GetClockSec()-decoderStartT);
 
         /* generate the output probabilities */

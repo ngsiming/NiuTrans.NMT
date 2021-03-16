@@ -141,7 +141,7 @@ make the decoding network
 */
 XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
                          XTensor* maskEncDec, int nstep, bool isTraining,
-                         bool usePacking)
+                         bool useFbgemm)
 {
     /* clear the history */
     if (useHistory)
@@ -185,7 +185,7 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
         startT = GetClockSec();
         att = selfAtt[i].Make(selfAttnBefore, selfAttnBefore, selfAttnBefore, 
                               mask, isTraining, &selfAttCache[i], SELF_ATT,
-                              usePacking);
+                              useFbgemm);
     LOG("decoder selfAtt, elapsed=%.1fs ", GetClockSec() - startT);
 
         /* dropout */
@@ -205,7 +205,7 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
 	startT = GetClockSec();
         ende = enDeAtt[i].Make(outputEnc, endeAttnBefore, outputEnc, maskEncDec, 
                                isTraining, &enDeAttCache[i], EN_DE_ATT,
-                               usePacking);
+                               useFbgemm);
     LOG("decoder enDeAtt, elapsed=%.1fs ", GetClockSec() - startT);
 
         /* dropout */
@@ -223,7 +223,7 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
 
         /* fnn */
 	startT = GetClockSec();
-        fnn = fnns[i].Make(fnnBefore, isTraining,usePacking);
+        fnn = fnns[i].Make(fnnBefore, isTraining, useFbgemm);
     LOG("decoder fnn, elapsed=%.1fs ", GetClockSec() - startT);
 
         /* dropout */

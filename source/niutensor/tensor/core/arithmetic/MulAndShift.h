@@ -30,14 +30,11 @@ namespace nts { // namespace nts(NiuTrans.Tensor)
 
 
 XTensor MulAndShift(const XTensor &x, const XTensor &w, const XTensor &b,
-                    DTYPE alpha = (DTYPE)1.0, XPRunner * parallelRunner = NULL);
+                    DTYPE alpha = (DTYPE)1.0, XPRunner * parallelRunner = NULL, bool useFbgemm = false);
 
 XTensor MulAndShift(const XTensor &x, MATRIX_TRANS_TYPE transposedX,
                     const XTensor &w, MATRIX_TRANS_TYPE transposedW,
                     const XTensor &b, DTYPE alpha = (DTYPE)1.0, XPRunner * parallelRunner = NULL);
-
-XTensor fbgemmMulAndShift2D(const XTensor &x, const XTensor &w, const XTensor &b,
-                          DTYPE alpha = (DTYPE)1.0, XPRunner * parallelRunner = NULL);
 
 } // namespace nts(NiuTrans.Tensor)
 

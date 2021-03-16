@@ -28,18 +28,6 @@
 namespace nmt
 {
 /* constructor */
-void printTensor(XTensor x)
-{
-    printf("\n==============\n");
-    for(int i=0;i<x.dimSize[0];i++)
-    {
-        for(int j=0;j<x.dimSize[1];j++)
-            //if(x.Get2D(i,j)!=0)
-            printf("%.3f,",x.Get2D(i,j));
-        printf("\n**********\n");
-    }
-    printf("\n==============\n");
-}
 Attention::Attention()
 {
     devID = -1;
@@ -127,29 +115,19 @@ make the network
 */
 XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
                         bool isTraining, Cache* cache, int attType,
-                        bool usePacking)
+                        bool useFbgemm)
 {
     const bool isEnc = (!cache) ? true : false;
 
     /* linear transformation before self-attention */
     XTensor q2, k2, v2;
-    //if(usePacking)
-    //{
-        //q.Reshape(q.unitNum/q.dimSize[q.order-1], q.dimSize[q.order-1]);
-        //k.Reshape(k.unitNum/k.dimSize[k.order-1], k.dimSize[k.order-1]);
-        //v.Reshape(v.unitNum/v.dimSize[v.order-1], v.dimSize[v.order-1]);
-    //}
 
-    //printf("here is the first!");
-    //printTensor(weightQ);
-    q2 = usePacking ?fbgemmMulAndShift2D(q, weightQ, biasQ):MulAndShift(q, weightQ, biasQ);
-    //printf("here is the end of the first!");
+    q2 = MulAndShift(q, weightQ, biasQ, (DTYPE)1.0, NULL, useFbgemm);
 
     if (!cache || isTraining || !(cache->enable)) {
         /* self attention for encoder layers */
-        k2 = usePacking ? fbgemmMulAndShift2D(k, weightK, biasK) : MulAndShift(k, weightK, biasK);
-        v2 = usePacking ? fbgemmMulAndShift2D(v, weightV, biasV) : MulAndShift(v, weightV, biasV);
-        //v2 = usePacking ? fbgemmMulAndShift2D(v, weightV, biasV) : MulAndShift(v, weightV, biasV);
+        k2 = MulAndShift(k, weightK, biasK, (DTYPE)1.0, NULL, useFbgemm);
+        v2 = MulAndShift(v, weightV, biasV, (DTYPE)1.0, NULL, useFbgemm);
 
         if (useRPR && attType == SELF_ATT)
             return MakeRPRAttention(k2, q2, v2, mask, isTraining, isEnc);
@@ -158,8 +136,8 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
 
     else {
         if (attType == SELF_ATT) {
-            k2 = usePacking ? fbgemmMulAndShift2D(k, weightK, biasK) : MulAndShift(k, weightK, biasK);
-            v2 = usePacking ? fbgemmMulAndShift2D(v, weightV, biasV) : MulAndShift(v, weightV, biasV);
+            k2 = MulAndShift(k, weightK, biasK, (DTYPE)1.0, NULL, useFbgemm);
+            v2 = MulAndShift(v, weightV, biasV, (DTYPE)1.0, NULL, useFbgemm);
 
             /* if hit, we only concat the cache with the new token */
             if (!cache->miss) {
@@ -176,8 +154,8 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
         }
         else if (attType == EN_DE_ATT) {
             if (cache->miss) {
-                cache->key = usePacking ? fbgemmMulAndShift2D(k ,weightK, biasK) : MulAndShift(k, weightK, biasK);
-                cache->value = usePacking ? fbgemmMulAndShift2D(v, weightV, biasV) : MulAndShift(v, weightV, biasV);
+                cache->key = MulAndShift(k, weightK, biasK, (DTYPE)1.0, NULL, useFbgemm);
+                cache->value = MulAndShift(v, weightV, biasV, (DTYPE)1.0, NULL, useFbgemm);
                 cache->miss = false;
             }
 
@@ -197,7 +175,7 @@ make the attention network given keys, queries and values (after linear transfor
 */
 XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v,
                                  XTensor* mask, bool isTraining,
-                                 bool usePacking)
+                                 bool useFbgemm)
 {
     XTensor kheads;
     XTensor qheads;
@@ -245,7 +223,7 @@ XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v,
         att = ConvertDataType(att, dataType);
 
     /* concatenate the heads */
-    return usePacking ? fbgemmMulAndShift2D(Merge(att, att.order - 1), weightO, biasO) : MulAndShift(Merge(att, att.order - 1), weightO, biasO);
+    return MulAndShift(Merge(att, att.order - 1), weightO, biasO, (DTYPE)1.0, NULL, useFbgemm);
 }
 
 /*
@@ -260,7 +238,7 @@ with the given keys, queries and values (after linear transformation)
 */
 XTensor Attention::MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
                                     XTensor* mask, bool isTraining, bool isEnc,
-                                    bool usePacking)
+                                    bool useFbgemm)
 {
     XTensor kheads;
     XTensor qheads;
@@ -319,7 +297,7 @@ XTensor Attention::MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
         att = ConvertDataType(att, dataType);
 
     /* concatenate the heads */
-    return usePacking ? fbgemmMulAndShift2D(Merge(att, att.order - 1), weightO, biasO) : MulAndShift(Merge(att, att.order - 1), weightO, biasO);
+    return MulAndShift(Merge(att, att.order - 1), weightO, biasO, (DTYPE)1.0, NULL, useFbgemm);
 }
 
 /*

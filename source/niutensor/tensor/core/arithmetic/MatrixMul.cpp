@@ -29,22 +29,6 @@
 #include "../../../../fbgemm/packed_gemm.h"
 
 namespace nts { // namespace nts(NiuTrans.Tensor)
-
-void printTensor(XTensor x,std::string fn)
-{
-    FILE* fd=fopen(fn.c_str(),"a");
-    printf("\n==============\n");
-    //fprintf(fd,"%d\n",x.unitNum);
-    for(int i=0;i<x.dimSize[0];i++)
-    {
-        for(int j=0;j<x.dimSize[1];j++)
-            //if(x.Get2D(i,j)!=0)
-            fprintf(fd,"%.3f\n",x.Get2D(i,j));
-        //fprintf(fd,"\n**********\n");
-    }
-    fclose(fd);
-    printf("\n==============\n");
-}
 /*
 matrix multiplication c = trans(a) * trans(b) * alpha + c * beta
 
@@ -89,8 +73,6 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
         c2->data = c->data;
         if(useFbgemm)
         {
-            //printTensor(*a2,"a");
-            //printTensor(*b,"b");
             fbgemmPacked8Gemm(
                     *c2,
                     *a2,
@@ -104,14 +86,6 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
                     transposedA==MATRIX_TRANS_TYPE::X_TRANS?1:0,
                     transposedB==MATRIX_TRANS_TYPE::X_TRANS?1:0
                     );
-            //printf("a2 dim:%d,%d\n",a2->dimSize[0],a2->dimSize[1]);
-            //printf("b dim:%d,%d\n",b->dimSize[0],b->dimSize[1]);
-            //printf("c2 dim:%d,%d\n",c2->dimSize[0],c2->dimSize[1]);
-            //printTensor(*b);
-            //printTensor(b);
-            //printTensor(*c2,"fbc2");
-
-            //CheckNTErrors(false,"stop");
         }
         else
         {

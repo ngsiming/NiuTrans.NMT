@@ -137,17 +137,17 @@ public:
     XTensor Make(XTensor& k, XTensor& q, XTensor& v,
                  XTensor* mask, bool isTraining,
                  Cache* cache, int cacheType,
-                 bool usePacking = false);
+                 bool useFbgemm = false);
 
     /* make the attention network given keys, queries and values (after linear transformation) */
     XTensor MakeAttention(XTensor& k, XTensor& q, XTensor& v,
                           XTensor* mask, bool isTraining,
-                          bool use = false);
+                          bool useFbgemm = false);
 
     /* make the attention network given keys, queries and values (after linear transformation) */
     XTensor MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
                              XTensor* mask, bool isTraining, bool isEnc,
-                             bool usePacking = false);
+                             bool useFbgemm = false);
 
     /* generate relative position embeddings */
     XTensor GetRPEmbedding(int lenQ, int lenKV, int maxRelativeLen, bool isEnc, bool isTraining);

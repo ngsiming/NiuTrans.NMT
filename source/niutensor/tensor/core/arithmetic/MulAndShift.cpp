@@ -29,83 +29,6 @@
 #include <cstdio>
 
 namespace nts { // namespace nts(NiuTrans.Tensor)
-/*
-operation c = x * w + b  MulAndShift
->> x - tensor x
->> w - tensor w
->> b - tensor b
->> parallelRunner - parallel processing module
-<< return - the result of matrix multiplication
-*/
-XTensor MulAndShift(const XTensor &x, const XTensor &w, const XTensor &b,
-                    DTYPE alpha, XPRunner * parallelRunner)
-{
-    CheckNTErrors(x.dataType == w.dataType, "Input tensors should have the same data type!");
-    CheckNTErrors(x.order >= 2 && w.order >= 2, "Input tensors must have a order >= 2!");
-
-    int xn = x.dimSize[x.order - 2];
-    int xm = x.dimSize[x.order - 1];
-    int wn = w.dimSize[w.order - 2];
-    int wm = w.dimSize[w.order - 1];
-
-    CheckNTErrors(xm == wn, "Unmatched tensors in multiplication!");
-
-    int order = x.order + w.order - 2;
-    int sub = 0;
-    int * dimSize = new int[order];
-    for (int i = 0; i < x.order - 2; i++)
-        dimSize[sub++] = x.dimSize[i];
-    for (int i = 0; i < w.order - 2; i++)
-        dimSize[sub++] = w.dimSize[i];
-
-    dimSize[sub++] = xn;
-    dimSize[sub++] = wm;
-
-    float dr = (!x.isSparse || !w.isSparse) ? 1.0F : MAX(x.denseRatio, w.denseRatio);
-
-    XTensor * tmp = NewTensorBufV2(order, dimSize, x.dataType, dr, x.devID, x.mem);
-
-    /* call _MatrixMul function */
-    _MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner);
-
-    XTensor c(tmp);
-    c.SetTMPFlag();
-
-    if (b.order == 0)
-        ScaleAndShift(*tmp, c, 1.0F, b.Get0D());
-    else {
-        int n = GetBroadcastDimIndex(tmp, b);
-
-        if (n == -1) {
-            /* call _Sum function */
-            _Sum(tmp, &b, &c);
-
-            // TODO!!
-            ShowNTErrors("TODO!");
-        }
-        else if (n >= 0 && n < tmp->order) {
-            /* call _SumDim function */
-            _SumDim(tmp, &b, &c, n);
-        }
-        else {
-            ShowNTErrors("Something is wrong!");
-        }
-        /* tensor connections */
-        if (w.enableGrad && b.enableGrad) {
-            XLink::MakeLink(&x, &w, &b, &c, MATH_MULANDSHIFT);
-            XLink::AddParamToHeadInt(&c, n);
-            XLink::AddParamToHeadTrans(&c, X_NOTRANS);
-            XLink::AddParamToHeadTrans(&c, X_NOTRANS);
-            XLink::AddParamToHead(&c, alpha);
-        }
-    }
-
-    /* destroy variables */
-    delete[] dimSize;
-    DelTensorBuf(tmp);
-
-    return c;
-}
 
 /*
 Only operations on matrices are supported.
@@ -114,14 +37,25 @@ operation c = x * w + b  MulAndShift, using fbgemm to accelerate.
 >> w - tensor w
 >> b - tensor b
 >> parallelRunner - parallel processing module
+>> useFbgemm - indicates whether using fbgemm to accelerate or not.
 << return - the result of matrix multiplication
 */
-XTensor fbgemmMulAndShift2D(const XTensor &x, const XTensor &w, const XTensor &b,
-                          DTYPE alpha, XPRunner * parallelRunner)
+XTensor MulAndShift(const XTensor &x, const XTensor &w, const XTensor &b,
+                          DTYPE alpha, XPRunner * parallelRunner, bool useFbgemm)
 {
-    CheckNTErrors(x.dataType == w.dataType, "Input tensors should have the same data type!");
-    CheckNTErrors(x.order >= 2 && w.order == 2, "Input x tensor must have a order >= 2!Input w tensor must have a order == 2!");
-    CheckNTErrors(w.isPrePacked, "the weight matrix must be pre-packed!");
+    if(useFbgemm)
+    {
+
+        CheckNTErrors(x.dataType == w.dataType, "Input tensors should have the same data type!");
+        CheckNTErrors(x.order >= 2 && w.order == 2, "Input x tensor must have a order >= 2!Input w tensor must have a order == 2!");
+        CheckNTErrors(w.isPrePacked, "the weight matrix must be pre-packed!");
+    }
+    else
+    {
+
+        CheckNTErrors(x.dataType == w.dataType, "Input tensors should have the same data type!");
+        CheckNTErrors(x.order >= 2 && w.order >= 2, "Input tensors must have a order >= 2!");
+    }
 
     int xn = x.dimSize[x.order - 2];
     int xm = x.dimSize[x.order - 1];
@@ -142,64 +76,8 @@ XTensor fbgemmMulAndShift2D(const XTensor &x, const XTensor &w, const XTensor &b
     dimSize[sub++] = wm;
 
     float dr = (!x.isSparse || !w.isSparse) ? 1.0F : MAX(x.denseRatio, w.denseRatio);
-
-    //XTensor * tmp = NewTensorBufV2(order, dimSize, x.dataType, dr, x.devID, x.mem);
-
-    //printf("********\n");
-    //for(int i=0;i<10;i++)
-    //{
-        //printf("%f,",tmp->Get3D(0,0,i));
-    //}
-    //printf("\n");
-    //[> call _MatrixMul function <]
-    //_MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,[>useFbgemm<]false);
-    //for(int i=0;i<10;i++)
-    //{
-        //printf("%f,",tmp->Get3D(0,0,i));
-    //}
-    //printf("\n");
-    //printf("**********\n");
     XTensor * tmp = NewTensorBufV2(order, dimSize, x.dataType, dr, x.devID, x.mem);
-
-    //printf("=======\n");
-    //for(int i=0;i<10;i++)
-    //{
-        //printf("%f,",tmp->Get3D(0,0,i));
-    //}
-    //printf("\n");
-    /* call _MatrixMul function */
-    //printf("\ntmp order:%d\n",tmp->order);
-    //for(int i=0;i<tmp->order;i++)
-        //printf("%d,",tmp->dimSize[i]);
-    //printf("\n");
-    //for(int i=0;i<5;i++)
-        //printf("%f,",tmp->Get3D(0,0,i));
-    //printf("\n");
-    _MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,/*useFbgemm*/true);
-    //printf("\ntmp,order:%d\n",tmp->order);
-    //for(int i=0;i<tmp->order;i++)
-        //printf("%d,",tmp->dimSize[i]);
-    //printf("\n");
-    //for(int i=0;i<20;i++)
-        //printf("%f,",tmp->Get3D(0,0,i));
-    //printf("\n");
-    //CheckNTErrors(false,"stop");
-    //for(int i=0;i<10;i++)
-    //{
-        //printf("%f,",tmp->Get3D(0,0,i));
-    //}
-    //printf("\n");
-    //printf("=======\n");
-    //fbgemmPacked8Gemm(
-            //*tmp,
-            //x,
-            //w.packedbuf,
-            //xn,
-            //wm,
-            //xm,
-            //0,
-            //0
-            //);
+    _MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,useFbgemm);
 
     XTensor c(tmp);
     c.SetTMPFlag();

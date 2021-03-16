@@ -41,7 +41,7 @@ base class of the encoder
 class Encoder
 {
 public:
-    virtual XTensor Make(XTensor& input, XTensor* mask, XTensor& mask2, bool isTraining, bool usePacking=false) = 0;
+    virtual XTensor Make(XTensor& input, XTensor* mask, XTensor& mask2, bool isTraining, bool useFbgemm=false) = 0;
 };
 
 /*
@@ -115,10 +115,10 @@ public:
     /* pack the weight matrix in attn and fnn layers */
     void Pack();
     /* make the encoding network */
-    XTensor Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining, bool usePacking=false);
+    XTensor Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining, bool useFbgemm=false);
 
     /* make the encoding network (wrapper) */
-    XTensor Make(XTensor& input, XTensor* mask, bool isTraining, bool usePacking=false);
+    XTensor Make(XTensor& input, XTensor* mask, bool isTraining, bool useFbgemm=false);
 };
 
 }

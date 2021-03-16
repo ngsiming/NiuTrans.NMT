@@ -67,9 +67,6 @@ void FNN::InitModel(Config& config)
     _SetDataFanInOut(&w1, scale);
     _SetDataFanInOut(&w2, scale);
 
-    //w1.SetDataRand(-(DTYPE)sqrt(6.0F / inSize), (DTYPE)sqrt(6.0F / inSize));
-    //w2.SetDataRand(-(DTYPE)sqrt(6.0F / hSize), (DTYPE)sqrt(6.0F / hSize));
-
     b1.SetZeroAll();
     b2.SetZeroAll();
 }
@@ -87,24 +84,18 @@ y = max(0, x * w1 + b1) * w2 + b2
 >> return - the output tensor
 */
 XTensor FNN::Make(XTensor& input, bool isTraining,
-                 bool usePacking)
+                 bool useFbgemm)
 {
     XTensor t1;
-    //if(usePacking)
-    //{
-        //input.Reshape(input.unitNum/input.dimSize[input.order-1], input.dimSize[input.order-1]);
-        //w1.Reshape(w1.unitNum/w1.dimSize[w1.order-1], w1.dimSize[input.order-1]);
-        //w2.Reshape(w2.unitNum/w2.dimSize[w2.order-2], w2.dimSize[input.order-2]);
-    //}
 
     /* t1 = max(0, x * w1 + b1) */
-    t1 = Rectify(usePacking ? fbgemmMulAndShift2D(input, w1, b1) : MulAndShift(input, w1, b1));
+    t1 = Rectify(MulAndShift(input, w1, b1, (DTYPE)1.0, NULL, useFbgemm));
     
     if (isTraining && dropoutP > 0)
         t1 = Dropout(t1, dropoutP, /*inplace=*/true);
 
     /* result = t1 * w2 + b2 */
-    return usePacking ? fbgemmMulAndShift2D(t1, w2, b2) : MulAndShift(t1, w2, b2);
+    return MulAndShift(t1, w2, b2, (DTYPE)1.0, NULL, useFbgemm);
 }
 
 }
