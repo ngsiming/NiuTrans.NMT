@@ -77,7 +77,8 @@ XTensor MulAndShift(const XTensor &x, const XTensor &w, const XTensor &b,
 
     float dr = (!x.isSparse || !w.isSparse) ? 1.0F : MAX(x.denseRatio, w.denseRatio);
     XTensor * tmp = NewTensorBufV2(order, dimSize, x.dataType, dr, x.devID, x.mem);
-    _MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,useFbgemm);
+    //_MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,useFbgemm);
+    _MatrixMul(&x, X_NOTRANS, &w, X_NOTRANS, tmp, alpha, 0, parallelRunner,false,true);
 
     XTensor c(tmp);
     c.SetTMPFlag();

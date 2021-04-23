@@ -28,6 +28,36 @@
 #include "MatrixMulBatched.h"
 #include "../../../../fbgemm/packed_gemm.h"
 
+#include <fstream>
+#include <iostream>
+void printTensor(XTensor c,int m,int n,std::string name)
+{
+    std::ofstream f;
+    f.open(name);
+    printf("\n%d,%d\n",m,n);
+    for(int i=0;i<m;i++)
+    {
+        for(int j=0;j<n;j++)
+        {
+            //f<<c.Get2D(i,j)<<std::endl;
+            f<<((float*)c.data)[i*n+j]<<std::endl;
+        }
+    }
+}
+
+bool diff(XTensor c, XTensor cc, int m, int n,float diffrange)
+{
+    for(int i=0;i<m;i++)
+    {
+        for(int j=0;j<n;j++)
+        {
+            if(c.Get2D(i,j)-cc.Get2D(i,j)>diffrange || cc.Get2D(i,j)-c.Get2D(i,j)>diffrange)
+                return true;
+        }
+    }
+    return false;
+}
+
 namespace nts { // namespace nts(NiuTrans.Tensor)
 /*
 matrix multiplication c = trans(a) * trans(b) * alpha + c * beta
@@ -52,7 +82,7 @@ Obviously C = A * B performs normal matrix multiplication if A = y * z and B = x
 void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
                 const XTensor * b, MATRIX_TRANS_TYPE transposedB,
                 XTensor * c, DTYPE alpha, DTYPE beta, XPRunner * parallelRunner,
-                bool useFbgemm
+                bool useFbgemm, bool useNiuBLAS
                 )
 {
     CheckNTErrors(a && b && c, "Empty input tensors!");
@@ -87,9 +117,40 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
                     transposedB==MATRIX_TRANS_TYPE::X_TRANS?1:0
                     );
         }
+        else if(useNiuBLAS)
+        //else if(false)
+        {
+            //NiuBLAS GEMM
+            //only support float now.
+            //printf("\nMatrix Mulstart\n");
+            int m=a2->dimSize[a2->order-2];
+            int k=a2->dimSize[a2->order-1];
+            int n=b->dimSize[b->order-1];
+
+            //XTensor c3;
+            //InitTensor2D(&c3,m,n, c->dataType);
+            //c3.SetZeroAll();
+            
+            a2->packedBuf = packA((float*)a2->data,m,k,mr,kc);
+
+            struct XBlockingFactors factos = {kc,mr,nr};
+            c2->SetZeroAll();
+            //_MatrixMul2D(a2, transposedA, b, transposedB, &c3, alpha, beta, parallelRunner);
+            //printTensor(*c2,m,n,"c.NiuTensor");
+            NiuGEMM((float*)a2->packedBuf,(float*)b->packedBuf,c2,m,k,n,factos,regLen);
+            //if(diff(*c2,c3,m,n,1))
+            //{
+                ////printf("\n%d,%d\n",m,n);
+                //printTensor(*c2,m,n,"c.NiuBLAS");
+                //printTensor(c3,m,n,"c.NiuTensor");
+                //printTensor(*a2,m,k,"a.Source");
+                //printTensor(*b,k,n,"b.Source");
+                //printf("\nwrong answer\n");
+                //exit(1);
+            //}
+        }
         else
         {
-
             _MatrixMul2D(a2, transposedA, b, transposedB, c2, alpha, beta, parallelRunner);
         }
         a2->data = NULL;

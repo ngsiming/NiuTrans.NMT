@@ -86,13 +86,20 @@ public:
     /* indicates whether the weight matrix is pre-packed */
     bool isPrePacked;
 
+    /* the pack B processing. Only used for FBGEMM  */
     fbgemm::PackBMatrix<int8_t>* packedBN;
 
+    /* information to quantilize. Only used for FBGEMM */
     float* bqScale;
 
+    /* information to quantilize. Only used for FBGEMM */
     int32_t* bqZeropoint;
 
+    /* information to quantilize. Only used for FBGEMM */
     int32_t* col_offsets;
+
+    /* buffer to store packed matrix. Only used for NiuBLAS  */
+    void* packedBuf;
 
     /* 
     device id 
@@ -220,8 +227,13 @@ public:
     /* delete data arrays */
     void DestroyData();
 
-    /* quantilize and pack the weight matrix in int8 */
-    void Pack();
+    /*
+     * @brief pack the weight matrix.
+     *
+     * @param useFbgemm if true, quantilize and pack the weight matrix in int8.\
+     * if false, use NiuBLAS to just pack the weight matrix.
+     */
+    void Pack(bool useFbgemm=false);
 
     /* shallow copy of tensor */
     void ShallowCopy(const XTensor &tensor);

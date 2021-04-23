@@ -257,9 +257,6 @@ void fbgemmPacked8Gemm(XTensor& C,
       row_offset_buf.data(),
       params);
 
-  // packed matrix size of B
-  int bPackSize = PackMatrix<PackBMatrix<int8_t>, int8_t>::packedBufferSize((int32_t)k, (int32_t)n);
-
   DoNothing<float, float> doNothingObj{};
   ReQuantizeForFloat<false, QuantizationGranularity::OUT_CHANNEL> outputProcObj(
       doNothingObj,
@@ -272,8 +269,6 @@ void fbgemmPacked8Gemm(XTensor& C,
       nullptr,
       (std::uint32_t) n);
 
-
-    //packedBN.printPackedMatrix("fuck");
   // gemm computation
   fbgemmPacked(packAN, *packedBN, (float*)C.data, (int32_t*)C.data, (int32_t) n, outputProcObj, 0, 1, params);
 }

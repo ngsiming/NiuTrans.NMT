@@ -23,6 +23,7 @@
 #define __MATRIXMUL_H__
 
 #include "../../XTensor.h"
+#include "../../../../NiuBLAS/NiuBLAS.h"
 
 namespace nts { // namespace nts(NiuTrans.Tensor)
 
@@ -45,7 +46,8 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
                 XTensor * c,
                 DTYPE alpha = (DTYPE)1.0, DTYPE beta = 0, 
                 XPRunner * parallelRunner = NULL,
-                bool useFbgemm = false
+                bool useFbgemm = false,
+                bool useNiuBLAS = false
                 );
 
 /* 

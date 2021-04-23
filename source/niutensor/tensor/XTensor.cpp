@@ -52,6 +52,7 @@
 #include "function/Identity.h"
 #include "core/CHeader.h"
 #include "../../fbgemm/packed_gemm.h"
+//#include "../../NiuBLAS/NiuBLAS.h"
 
 #ifdef USE_CUDA
 
@@ -277,6 +278,7 @@ void XTensor::Init()
     packedBN = nullptr;
     bqScale = nullptr;
     bqZeropoint = nullptr;
+    packedBuf = nullptr;
     col_offsets = nullptr;
     devID = -1;
     order = -1;
@@ -317,36 +319,47 @@ void XTensor::DestroyData()
     dataHost = NULL;
 }
 
-void XTensor::Pack()
+void XTensor::Pack(bool useFbgemm)
 {
     CheckNTErrors(order==2, "the tensor to be packed must be 2-dimenision!");
     int col = dimSize[order-1];
-    std::vector<int> shape;
-    shape.push_back(dimSize[order - 2]);
-    shape.push_back(dimSize[order - 1]);
-	int nrow,ncol;
-	uint64_t packsize;
-	fbgemmPacked8PackInfo(
-			shape,
-			packed8avx2,
-			false,
-			nrow,
-			ncol,
-			packsize
-			);
+    if(useFbgemm)
+    {
+        std::vector<int> shape;
+        shape.push_back(dimSize[order - 2]);
+        shape.push_back(dimSize[order - 1]);
+        int nrow,ncol;
+        uint64_t packsize;
+        fbgemmPacked8PackInfo(
+                shape,
+                packed8avx2,
+                false,
+                nrow,
+                ncol,
+                packsize
+                );
 
-    fbgemmPacked8Pack(
-            packedBN,
-            bqScale,
-            bqZeropoint,
-            col_offsets,
-            (float*)this->data,
-            Type::packed8avx2,
-            false,
-            nrow,
-            ncol,
-            packsize
-            );
+        fbgemmPacked8Pack(
+                packedBN,
+                bqScale,
+                bqZeropoint,
+                col_offsets,
+                (float*)this->data,
+                Type::packed8avx2,
+                false,
+                nrow,
+                ncol,
+                packsize
+                );
+    }
+    //use NiuBLAS
+    else
+    {
+        int const k=dimSize[order-2];
+        int const n=dimSize[order-1];
+        //only support float now.
+        this->packedBuf = packB((float*)this->data,k,n,kc,nr);
+    }
     isPrePacked = true;
 }
 /* 

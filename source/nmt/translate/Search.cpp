@@ -804,7 +804,7 @@ void GreedySearch::Search(Model* model, XTensor& input,
 {
     XTensor maskEnc;
     XTensor encoding;
-    bool useFbgemm=true;
+    bool useFbgemm=false;
 
     /* dynamic batch size */
     Prepare(input.unitNum / input.dimSize[input.order - 1]);
