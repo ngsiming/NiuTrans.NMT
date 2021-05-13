@@ -120,8 +120,8 @@ void Translator::Translate(const char* ifn, const char* sfn,
 
         IntList* output = new IntList[indices.Size() - 1];
 
-        model->encoder->Pack();
-        model->decoder->Pack();
+        //model->encoder->Pack();
+        //model->decoder->Pack();
         /* greedy search */
         if (beamSize == 1) {
             ((GreedySearch*)seacher)->Search(model, batchEnc, paddingEnc, output);

@@ -152,10 +152,9 @@ endif()
 
 # Set libs and compiler options for MKL
 if(USE_MKL)
-    #add_definitions(-DMKL)
-    add_definitions(-DUSE_BLAS -DMKL)
-    set(COMPILER_DIR "${INTEL_ROOT}/compiler/2021.1.2/linux/compiler/")
-    set(MKL_DIR "${INTEL_ROOT}/mkl/2021.1.1/")
+    add_definitions(-DMKL)
+    set(COMPILER_DIR "${INTEL_ROOT}/compiler")
+    set(MKL_DIR "${INTEL_ROOT}/mkl")
     set(CPU_ARCH intel64)
     if(WIN32)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -DMKL")
@@ -183,16 +182,12 @@ if(USE_MKL)
         set(MKL_LIB_PATH ${MKL_LIB_PATH} "${MKL_LIB_DIR}libmkl_core.a")
         set(MKL_LIB_PATH ${MKL_LIB_PATH} "${MKL_LIB_DIR}libmkl_intel_thread.a")
         set(MKL_LIB_PATH ${MKL_LIB_PATH} "${COMPILER_LIB_DIR}libiomp5.a")
-        #added by wusiming test
-        set(MKL_LIB_PATH ${MKL_LIB_PATH} "${MKL_LIB_DIR}libmkl_avx2.so.1")
-        #test end
     endif()
 endif()
 
 # Set libs and compiler options for OpenBLAS
 if(USE_OPENBLAS)
-    #add_definitions(-DUSE_BLAS -DMKL)
-    add_definitions(-DUSE_BLAS -DOPENBLAS)
+    add_definitions(-DUSE_BLAS -DMKL)
     set(OPENBLAS_INCLUDE_DIR "${OPENBLAS_ROOT}/include")
     set(OPENBLAS_LIB_DIR "${OPENBLAS_ROOT}/lib")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_BLAS")
@@ -230,11 +225,6 @@ endif()
 
 # Link external libs to executable files
 # Link external libs to dynamic link library
-set(ALL_LIB ${ALL_LIB} "/usr/local/lib/libfbgemm.a")
-set(ALL_LIB ${ALL_LIB} "/usr/local/lib/libasmjit.a")
-set(ALL_LIB ${ALL_LIB} "/usr/local/lib/libcpuinfo.a")
-set(ALL_LIB ${ALL_LIB} "/usr/local/lib/libclog.a")
-set(ALL_LIB ${ALL_LIB} "rt")
 if(WIN32)
     add_definitions(-DWIN32)
     set(MESS ${MESS} "On Windows")
@@ -293,4 +283,3 @@ else()
     endif()
     message(STATUS "${MESS}")
 endif()
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mavx2 -mfma -msse -msse2 -msse3")

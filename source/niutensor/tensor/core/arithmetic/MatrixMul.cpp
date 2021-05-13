@@ -27,6 +27,7 @@
 #include "XTensorBLAS.h"
 #include "MatrixMulBatched.h"
 #include "../../../../fbgemm/packed_gemm.h"
+#include "../../../../NiuBLAS/NiuBLIS.h"
 
 #include <fstream>
 #include <iostream>
@@ -117,8 +118,8 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
                     transposedB==MATRIX_TRANS_TYPE::X_TRANS?1:0
                     );
         }
-        else if(useNiuBLAS)
-        //else if(false)
+        //else if(useNiuBLAS)
+        else if(false)
         {
             //NiuBLAS GEMM
             //only support float now.
@@ -149,9 +150,48 @@ void _MatrixMul(const XTensor * a, MATRIX_TRANS_TYPE transposedA,
                 //exit(1);
             //}
         }
-        else
+        else if(useNiuBLAS)
         {
-            _MatrixMul2D(a2, transposedA, b, transposedB, c2, alpha, beta, parallelRunner);
+            int m=a2->dimSize[a2->order-2];
+            int k=a2->dimSize[a2->order-1];
+            //int k=b->dimSize[b->order-2];
+            int n=b->dimSize[b->order-1];
+            //XTensor c_ref;
+            //InitTensor2D(&c_ref,m,n, c->dataType);
+            //c_ref.SetZeroAll();
+            //printf("\nm:%d,k:%d,n:%d\n",m,k,n);
+            //printf("\n%d\n",transposedB);
+            //_MatrixMul2D(a2, transposedA, b, transposedB, &c_ref, alpha, beta, parallelRunner);
+            //XTensor b_trans(*b);
+            //InitTensor2D(&b_trans,b->dimSize[b->order-2],b->dimSize[b->order-1],b->dataType);
+            //XTensor a_trans;
+            //InitTensor2D(&a_trans,a2->dimSize[a2->order-2],b->dimSize[a2->order-1],a2->dataType);
+            //XTensor c_trans;
+            //InitTensor2D(&b_trans,b->dimSize[b->order-2],b->dimSize[b->order-1],b->dataType);
+            c2->SetZeroAll();
+            //if(transposedB==X_TRANS)
+            //{
+                ////b_trans = Transpose(b,b->dimSize[b->order-2],b->dimSize[b->order-1]);
+                //b_trans = Transpose(b,0,1);
+                //bl_dgemm(m,n,k,(float*)a2->data,k,(float*)b_trans.data,n,(float*)c2->data,n);
+            //}
+            //else
+            //{
+                bl_dgemm(m,n,k,(float*)a2->data,k,(float*)b->data,n,(float*)c2->data,n);
+            //}
+            //if(m<DGEMM_MC || k<DGEMM_KC || n<DGEMM_NC)
+                //_MatrixMul2D(a2, transposedA, b, transposedB, c2, alpha, beta, parallelRunner);
+            //else
+            //if(diff(*c2,c_ref,m,n,0.01))
+            //{
+                //printf("\nm:%d,k:%d,n:%d\n",m,k,n);
+                //exit(1);
+            //}
+
+        }
+        else{
+
+                _MatrixMul2D(a2, transposedA, b, transposedB, c2, alpha, beta, parallelRunner);
         }
         a2->data = NULL;
         c2->data = NULL;
